@@ -1,0 +1,529 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum GlobalRole {
+  ADMIN
+  TEAM_LEAD
+  TEAM_MEMBER
+}
+
+enum TeamMemberRole {
+  LEAD
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantRole {
+  ORGANIZER
+  ATTENDEE
+}
+
+enum RsvpStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+}
+
+enum AudioProcessingStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+enum TranscriptSource {
+  WHISPER
+  UPLOAD_TXT
+  UPLOAD_DOCX
+  UPLOAD_PDF
+  LIVE
+}
+
+enum ActionItemPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActionItemSource {
+  AI
+  MANUAL
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_COMMENT
+  MEETING_REMINDER
+  MEETING_INVITE
+  ACTION_ITEM_ASSIGNED
+  MENTION
+  SYSTEM
+}
+
+enum AiFeature {
+  TRANSCRIPTION
+  SUMMARY
+  ACTION_ITEMS
+  EMBEDDING
+  QA
+  SENTIMENT
+}
+
+enum SentimentLabel {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  MIXED
+}
+
+enum CalendarProvider {
+  GOOGLE
+  OUTLOOK
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  INVITE
+  UPLOAD
+  EXPORT
+}
+
+// ---------------------------------------------------------------------------
+// Users & Auth
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         GlobalRole @default(TEAM_MEMBER)
+  avatarUrl    String?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  refreshTokens        RefreshToken[]
+  deviceTokens         DeviceToken[]
+  ownedTeams           Team[]                @relation("TeamOwner")
+  teamMemberships      TeamMember[]
+  sentInvitations      TeamInvitation[]      @relation("InvitedBy")
+  organizedMeetings    Meeting[]             @relation("MeetingCreator")
+  meetingParticipation MeetingParticipant[]
+  attendanceRecords    AttendanceRecord[]
+  assignedActionItems  ActionItem[]          @relation("ActionItemAssignee")
+  createdTasks         Task[]                @relation("TaskCreator")
+  assignedTasks        Task[]                @relation("TaskAssignee")
+  taskComments         TaskComment[]
+  taskAttachments      TaskAttachment[]
+  notifications        Notification[]
+  auditLogs            AuditLog[]
+  aiUsageLogs          AiUsageLog[]
+  calendarIntegrations CalendarIntegration[]
+
+  @@index([role])
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  replacedBy String?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  fcmToken  String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Teams
+// ---------------------------------------------------------------------------
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner       User             @relation("TeamOwner", fields: [ownerId], references: [id])
+  members     TeamMember[]
+  invitations TeamInvitation[]
+  meetings    Meeting[]
+  tasks       Task[]
+
+  @@index([ownerId])
+}
+
+model TeamMember {
+  id       String         @id @default(uuid())
+  teamId   String
+  userId   String
+  role     TeamMemberRole @default(MEMBER)
+  joinedAt DateTime       @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model TeamInvitation {
+  id          String            @id @default(uuid())
+  teamId      String
+  email       String
+  token       String            @unique
+  invitedById String
+  status      InvitationStatus  @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime          @default(now())
+
+  team      Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedBy User @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@index([teamId])
+  @@index([email])
+}
+
+// ---------------------------------------------------------------------------
+// Meetings
+// ---------------------------------------------------------------------------
+
+model Meeting {
+  id              String          @id @default(uuid())
+  teamId          String
+  title           String
+  description     String?         @db.Text
+  scheduledAt     DateTime
+  durationMinutes Int             @default(30)
+  status          MeetingStatus   @default(SCHEDULED)
+  recurrenceRule  String?
+  parentMeetingId String?
+  calendarEventId String?
+  sentimentScore  Float?
+  sentimentLabel  SentimentLabel?
+  createdById     String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  team            Team                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy       User                  @relation("MeetingCreator", fields: [createdById], references: [id])
+  parentMeeting   Meeting?              @relation("RecurringOccurrence", fields: [parentMeetingId], references: [id])
+  occurrences     Meeting[]             @relation("RecurringOccurrence")
+  participants    MeetingParticipant[]
+  attendance      AttendanceRecord[]
+  audios          MeetingAudio[]
+  transcripts     Transcript[]
+  summaries       Summary[]
+  actionItems     ActionItem[]
+  tasks           Task[]
+
+  @@index([teamId])
+  @@index([createdById])
+  @@index([scheduledAt])
+  @@fulltext([title, description])
+}
+
+model MeetingParticipant {
+  id         String          @id @default(uuid())
+  meetingId  String
+  userId     String
+  role       ParticipantRole @default(ATTENDEE)
+  rsvpStatus RsvpStatus      @default(PENDING)
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@index([userId])
+}
+
+model AttendanceRecord {
+  id        String    @id @default(uuid())
+  meetingId String
+  userId    String
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@index([userId])
+}
+
+model MeetingAudio {
+  id              String                 @id @default(uuid())
+  meetingId       String
+  filePath        String
+  originalName    String
+  mimeType        String
+  durationSeconds Int?
+  language        String?
+  status          AudioProcessingStatus  @default(PENDING)
+  failureReason   String?                @db.Text
+  createdAt       DateTime               @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+}
+
+model Transcript {
+  id        String           @id @default(uuid())
+  meetingId String
+  source    TranscriptSource
+  language  String?
+  fullText  String           @db.LongText
+  createdAt DateTime         @default(now())
+
+  meeting  Meeting             @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  segments TranscriptSegment[]
+
+  @@index([meetingId])
+  @@fulltext([fullText])
+}
+
+model TranscriptSegment {
+  id           String   @id @default(uuid())
+  transcriptId String
+  speakerLabel String   @default("Unknown")
+  startTime    Float
+  endTime      Float
+  text         String   @db.Text
+  embedding    Json?
+
+  transcript Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptId])
+}
+
+model Summary {
+  id        String   @id @default(uuid())
+  meetingId String
+  content   String   @db.Text
+  model     String
+  createdAt DateTime @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@fulltext([content])
+}
+
+model ActionItem {
+  id          String             @id @default(uuid())
+  meetingId   String
+  taskId      String?            @unique
+  title       String
+  assigneeId  String?
+  priority    ActionItemPriority @default(MEDIUM)
+  dueDate     DateTime?
+  sourceType  ActionItemSource   @default(AI)
+  confidence  Float?
+  createdAt   DateTime           @default(now())
+
+  meeting  Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  assignee User?   @relation("ActionItemAssignee", fields: [assigneeId], references: [id])
+  task     Task?   @relation(fields: [taskId], references: [id])
+
+  @@index([meetingId])
+  @@index([assigneeId])
+}
+
+// ---------------------------------------------------------------------------
+// Tasks / Kanban
+// ---------------------------------------------------------------------------
+
+model Task {
+  id          String       @id @default(uuid())
+  teamId      String
+  meetingId   String?
+  title       String
+  description String?      @db.Text
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  assigneeId  String?
+  createdById String
+  dueDate     DateTime?
+  position    Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  team        Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  meeting     Meeting?         @relation(fields: [meetingId], references: [id])
+  assignee    User?            @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy   User             @relation("TaskCreator", fields: [createdById], references: [id])
+  actionItem  ActionItem?
+  comments    TaskComment[]
+  attachments TaskAttachment[]
+
+  @@index([teamId])
+  @@index([assigneeId])
+  @@index([status])
+  @@fulltext([title, description])
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+}
+
+model TaskAttachment {
+  id             String   @id @default(uuid())
+  taskId         String
+  filePath       String
+  originalName   String
+  mimeType       String
+  uploadedById   String
+  createdAt      DateTime @default(now())
+
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+
+  @@index([taskId])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String           @db.Text
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+// ---------------------------------------------------------------------------
+// Audit & AI usage
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  actorId    String?
+  action     AuditAction
+  entityType String
+  entityId   String?
+  diff       Json?
+  ipAddress  String?
+  createdAt  DateTime    @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model AiUsageLog {
+  id           String    @id @default(uuid())
+  userId       String?
+  feature      AiFeature
+  model        String
+  tokensUsed   Int?
+  costEstimate Float?
+  meetingId    String?
+  createdAt    DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([feature])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Calendar Integration
+// ---------------------------------------------------------------------------
+
+model CalendarIntegration {
+  id           String           @id @default(uuid())
+  userId       String
+  provider     CalendarProvider
+  accessToken  String           @db.Text
+  refreshToken String?          @db.Text
+  expiresAt    DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+}
