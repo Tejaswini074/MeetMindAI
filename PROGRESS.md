@@ -1,8 +1,10 @@
-# MeetMind Backend — Build Progress
+# MeetMind — Build Progress
 
-Backend-first phase (React Native app is a separate, later phase). All 15 milestones from the approved plan are complete, type-checked, and verified against a real MySQL database.
+Two phases complete: the backend (Node/Express/MySQL/Prisma API) and the React Native mobile app's core flow (Expo, backend-first architecture already in place to build against).
 
-## Status by milestone
+## Phase 1 — Backend
+
+All 15 milestones from the approved plan are complete, type-checked, and verified against a real MySQL database.
 
 | # | Milestone | Status |
 |---|-----------|--------|
@@ -22,22 +24,18 @@ Backend-first phase (React Native app is a separate, later phase). All 15 milest
 | 14 | Swagger docs + README | ✅ Done |
 | 15 | Jest: unit + integration tests | ✅ Done — 41/41 passing (27 unit, 14 integration against a live MySQL test DB) |
 
-## Verified, not just written
+**Verified, not just written**: `tsc --noEmit` zero errors; `npm run build` compiles clean; `prisma migrate dev` applied against real local MySQL (`meetmind` + `meetmind_test`); `npm test` 41/41 passing — the pagination unit test caught and fixed a real bug (`limit=0` falling back to the default instead of clamping to 1).
 
-- `npx tsc --noEmit` — zero errors across the full codebase.
-- `npm run build` — compiles clean, path aliases resolve correctly in the emitted `dist/`.
-- `npx prisma migrate dev` — applied successfully against a real local MySQL instance (`meetmind` dev DB + `meetmind_test` test DB).
-- `npm test` — 41/41 passing. The pagination unit test caught a real bug (`limit=0` silently fell back to the default instead of clamping to 1, due to a falsy-zero `||` check) — fixed in `src/common/utils/pagination.ts`.
+**Known simplifications** (see `backend/README.md`): speaker ID always "Unknown" (Whisper doesn't diarize); semantic search/RAG Q&A uses in-process cosine similarity, no vector DB; "live transcription" is chunked, not streaming ASR; calendar integration is Google-only.
 
-## Known simplifications (by design — see backend/README.md for detail)
+## Phase 2 — React Native app (Expo), core flow
 
-- Speaker identification labels everything `"Unknown"` (Whisper doesn't diarize); a `DiarizationProvider` seam exists for a real provider later.
-- Semantic search/RAG Q&A uses in-process cosine similarity over embeddings (no vector DB) — fine at demo scale.
-- "Live transcription" is chunked near-real-time transcription over Socket.IO, not literal streaming ASR.
-- Calendar integration implements Google only; Outlook has no implementation.
+Per agreed scope: full depth on the primary loop (auth → teams → meetings → upload/AI → Kanban → notifications), deferring calendar-sync UI, semantic-search UI, the analytics dashboard, and dark mode.
 
-## Not yet done
+**Built**: Expo + TypeScript, React Navigation, Redux Toolkit (RTK Query `baseApi` with reauth-on-401 mirroring the backend's rotating refresh tokens), `expo-secure-store` for tokens, Socket.IO client (live transcript, real-time Kanban, notification listener), `expo-audio` recording + `expo-document-picker` uploads, PDF/DOCX export via `expo-file-system` + `expo-sharing`, push registration via `expo-notifications` (raw FCM/APNs device token, matching the backend's `firebase-admin` usage) — see `mobile/README.md` for the full breakdown.
 
-- React Native mobile app (separate phase, not started).
-- No CI pipeline configured yet.
-- AI-dependent code paths (Whisper/GPT/embeddings) are implemented against the real OpenAI SDK but not exercised in tests since no `OPENAI_API_KEY` was provided — the integration tests deliberately stick to paths that don't require it (e.g. TXT transcript upload rather than audio transcription).
+**Verified, not just written**: `tsc --noEmit` and `expo lint` both clean; a full Metro export build bundles all 1352 modules with zero errors. No simulator/emulator was available in this environment, so there was no interactive device walkthrough — the user should run `npx expo start` themselves to confirm the UI/UX.
+
+**Notable fix during the build**: `src/app/` (Redux store folder) was renamed to `src/store/` after Metro's export build logged "Using src/app as the root directory for Expo Router" — the folder name collided with Expo Router's directory convention even though this project uses classic React Navigation, not Router. Confirmed via a second export that the false detection is gone post-rename.
+
+**Not yet done**: React Native app for calendar sync, semantic search, analytics dashboard, dark mode; no CI pipeline for either phase; push notification *delivery* (vs. registration) needs a physical device / EAS build to verify; AI-dependent backend paths (Whisper/GPT) are implemented for real but untested end-to-end since no `OPENAI_API_KEY` was provided.
