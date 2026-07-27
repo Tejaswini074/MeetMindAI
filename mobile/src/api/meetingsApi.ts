@@ -6,10 +6,13 @@ import {
   MeetingAudio,
   MeetingParticipant,
   MeetingStatus,
+  PagedResult,
   ParticipantRole,
   RsvpStatus,
   Transcript,
 } from '../types/api';
+
+const MEETINGS_PAGE_SIZE = 20;
 
 interface CreateMeetingInput {
   teamId: string;
@@ -29,12 +32,35 @@ interface FilePickerAsset {
 
 export const meetingsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listMeetings: builder.query<Meeting[], { teamId?: string; status?: MeetingStatus } | void>({
-      query: (params) => ({ url: '/meetings', params: params ?? undefined }),
-      transformResponse: (response: ApiEnvelope<Meeting[]>) => response.data,
+    listMeetings: builder.query<
+      PagedResult<Meeting>,
+      { teamId?: string; status?: MeetingStatus; page?: number } | void
+    >({
+      query: (params) => ({ url: '/meetings', params: { ...params, limit: MEETINGS_PAGE_SIZE } }),
+      transformResponse: (response: ApiEnvelope<Meeting[]>): PagedResult<Meeting> => ({
+        items: response.data,
+        total: response.meta?.total ?? response.data.length,
+      }),
+      // Cache one merged list per {teamId, status} combination, ignoring `page` itself.
+      serializeQueryArgs: ({ queryArgs }) => {
+        const { page: _page, ...rest } = queryArgs ?? {};
+        return rest;
+      },
+      merge: (currentCache, newData, { arg }) => {
+        if (!arg?.page || arg.page === 1) {
+          currentCache.items = newData.items;
+        } else {
+          currentCache.items.push(...newData.items);
+        }
+        currentCache.total = newData.total;
+      },
+      forceRefetch: ({ currentArg, previousArg }) => currentArg?.page !== previousArg?.page,
       providesTags: (result) =>
         result
-          ? [...result.map((m) => ({ type: 'Meeting' as const, id: m.id })), { type: 'Meeting' as const, id: 'LIST' }]
+          ? [
+              ...result.items.map((m) => ({ type: 'Meeting' as const, id: m.id })),
+              { type: 'Meeting' as const, id: 'LIST' },
+            ]
           : [{ type: 'Meeting' as const, id: 'LIST' }],
     }),
     getMeeting: builder.query<Meeting, string>({

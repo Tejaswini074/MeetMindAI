@@ -1,5 +1,5 @@
-import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { Card, EmptyState, LoadingSpinner, ScreenContainer } from '../../components';
 import { colors, spacing, typography } from '../../theme';
@@ -16,11 +16,21 @@ export function NotificationsListScreen() {
   // (e.g. MeetingsTab > MeetingDetail) isn't representable in React Navigation's
   // per-navigator param typing, so this one call is intentionally loosely typed.
   const navigation = useNavigation<NavigationProp<Record<string, object | undefined>>>();
-  const { data, isLoading, refetch, isFetching } = useListNotificationsQuery();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isFetching, refetch } = useListNotificationsQuery({ page });
   const [markRead] = useMarkNotificationReadMutation();
   const [markAllRead] = useMarkAllNotificationsReadMutation();
 
   if (isLoading) return <LoadingSpinner />;
+
+  const canLoadMore = !!data && data.items.length < data.total;
+  const handleRefresh = () => {
+    if (page === 1) refetch();
+    else setPage(1);
+  };
+  const handleLoadMore = () => {
+    if (canLoadMore && !isFetching) setPage((p) => p + 1);
+  };
 
   const handlePress = (notification: Notification) => {
     if (!notification.isRead) markRead(notification.id);
@@ -43,8 +53,11 @@ export function NotificationsListScreen() {
         data={data?.items ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        onRefresh={refetch}
-        refreshing={isFetching}
+        onRefresh={handleRefresh}
+        refreshing={isFetching && page === 1}
+        onEndReachedThreshold={0.5}
+        onEndReached={handleLoadMore}
+        ListFooterComponent={isFetching && page > 1 ? <ActivityIndicator style={styles.footerSpinner} /> : null}
         ListHeaderComponent={
           <View style={styles.headerRow}>
             <Text style={typography.h1}>Notifications</Text>
@@ -81,4 +94,5 @@ const styles = StyleSheet.create({
   card: { marginBottom: spacing.md },
   unreadCard: { borderColor: colors.primary, borderWidth: 1.5 },
   time: { ...typography.small, marginTop: spacing.xs },
+  footerSpinner: { marginVertical: spacing.lg },
 });

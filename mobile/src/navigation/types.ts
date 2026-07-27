@@ -12,6 +12,7 @@ export type MeetingsStackParamList = {
   MeetingsList: undefined;
   CreateMeeting: { teamId?: string } | undefined;
   MeetingDetail: { meetingId: string };
+  AskAssistant: undefined;
 };
 
 export type TasksStackParamList = {

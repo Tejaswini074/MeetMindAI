@@ -36,6 +36,12 @@ export interface PaginationMeta {
   totalPages: number;
 }
 
+/** Client-side shape for RTK Query's "load more" infinite-list pattern (see meetingsApi/notificationsApi). */
+export interface PagedResult<T> {
+  items: T[];
+  total: number;
+}
+
 export interface User {
   id: string;
   email: string;

@@ -12,6 +12,15 @@ import type { MeetingsStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<MeetingsStackParamList, 'CreateMeeting'>;
 
+type RecurrenceOption = 'NONE' | 'FREQ=DAILY' | 'FREQ=WEEKLY' | 'FREQ=MONTHLY';
+
+const RECURRENCE_OPTIONS: SelectOption<RecurrenceOption>[] = [
+  { value: 'NONE', label: 'Does not repeat' },
+  { value: 'FREQ=DAILY', label: 'Daily' },
+  { value: 'FREQ=WEEKLY', label: 'Weekly' },
+  { value: 'FREQ=MONTHLY', label: 'Monthly' },
+];
+
 export function CreateMeetingScreen({ navigation, route }: Props) {
   const { data: teams } = useListTeamsQuery();
   const [teamId, setTeamId] = useState<string | undefined>(route.params?.teamId ?? teams?.[0]?.id);
@@ -26,6 +35,8 @@ export function CreateMeetingScreen({ navigation, route }: Props) {
   });
   const [durationMinutes, setDurationMinutes] = useState('30');
   const [showPicker, setShowPicker] = useState<'date' | 'time' | null>(null);
+  const [recurrence, setRecurrence] = useState<RecurrenceOption>('NONE');
+  const [recurrenceModalVisible, setRecurrenceModalVisible] = useState(false);
 
   const [createMeeting, { isLoading, error }] = useCreateMeetingMutation();
 
@@ -47,6 +58,7 @@ export function CreateMeetingScreen({ navigation, route }: Props) {
         description: description.trim() || undefined,
         scheduledAt: scheduledAt.toISOString(),
         durationMinutes: Number(durationMinutes) || 30,
+        recurrenceRule: recurrence === 'NONE' ? undefined : recurrence,
       }).unwrap();
       navigation.replace('MeetingDetail', { meetingId: meeting.id });
     } catch {
@@ -103,6 +115,21 @@ export function CreateMeetingScreen({ navigation, route }: Props) {
         value={durationMinutes}
         onChangeText={setDurationMinutes}
         keyboardType="number-pad"
+      />
+
+      <Text style={styles.label}>Repeat</Text>
+      <Pressable style={styles.selectField} onPress={() => setRecurrenceModalVisible(true)}>
+        <Text style={typography.body}>
+          {RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label}
+        </Text>
+      </Pressable>
+      <SelectModal
+        visible={recurrenceModalVisible}
+        title="Repeat"
+        options={RECURRENCE_OPTIONS}
+        selectedValue={recurrence}
+        onSelect={setRecurrence}
+        onClose={() => setRecurrenceModalVisible(false)}
       />
 
       {error && <Text style={styles.error}>Could not create the meeting. Please try again.</Text>}

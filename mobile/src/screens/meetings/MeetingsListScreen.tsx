@@ -1,5 +1,5 @@
-import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Badge, Card, EmptyState, LoadingSpinner, ScreenContainer } from '../../components';
 import { colors, spacing, typography } from '../../theme';
@@ -13,10 +13,22 @@ import type { Meeting } from '../../types/api';
 type Props = NativeStackScreenProps<MeetingsStackParamList, 'MeetingsList'>;
 
 export function MeetingsListScreen({ navigation }: Props) {
-  const { data: meetings, isLoading, refetch, isFetching } = useListMeetingsQuery();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isFetching, refetch } = useListMeetingsQuery({ page });
   const { data: teams } = useListTeamsQuery();
 
   if (isLoading) return <LoadingSpinner />;
+
+  const meetings = data?.items ?? [];
+  const canLoadMore = !!data && meetings.length < data.total;
+
+  const handleRefresh = () => {
+    if (page === 1) refetch();
+    else setPage(1);
+  };
+  const handleLoadMore = () => {
+    if (canLoadMore && !isFetching) setPage((p) => p + 1);
+  };
 
   const teamNameById = new Map((teams ?? []).map((t) => [t.id, t.name]));
   const hasTeams = (teams ?? []).length > 0;
@@ -24,22 +36,30 @@ export function MeetingsListScreen({ navigation }: Props) {
   return (
     <ScreenContainer padded={false}>
       <FlatList
-        data={meetings ?? []}
+        data={meetings}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        onRefresh={refetch}
-        refreshing={isFetching}
+        onRefresh={handleRefresh}
+        refreshing={isFetching && page === 1}
+        onEndReachedThreshold={0.5}
+        onEndReached={handleLoadMore}
+        ListFooterComponent={isFetching && page > 1 ? <ActivityIndicator style={styles.footerSpinner} /> : null}
         ListHeaderComponent={
           <View style={styles.headerRow}>
             <Text style={typography.h1}>Meetings</Text>
-            {hasTeams && (
-              <Pressable
-                style={styles.newButton}
-                onPress={() => navigation.navigate('CreateMeeting', undefined)}
-              >
-                <Text style={styles.newButtonText}>+ New</Text>
+            <View style={styles.headerActions}>
+              <Pressable onPress={() => navigation.navigate('AskAssistant')} style={styles.askButton}>
+                <Text style={styles.askButtonText}>Ask AI</Text>
               </Pressable>
-            )}
+              {hasTeams && (
+                <Pressable
+                  style={styles.newButton}
+                  onPress={() => navigation.navigate('CreateMeeting', undefined)}
+                >
+                  <Text style={styles.newButtonText}>+ New</Text>
+                </Pressable>
+              )}
+            </View>
           </View>
         }
         ListEmptyComponent={
@@ -99,6 +119,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  askButton: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+  },
+  askButtonText: { color: colors.primary, fontWeight: '600' },
   newButton: {
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.md,
@@ -110,4 +139,5 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { flex: 1, marginRight: spacing.sm },
   meta: { ...typography.caption, marginTop: spacing.xs },
+  footerSpinner: { marginVertical: spacing.lg },
 });
