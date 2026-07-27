@@ -27,11 +27,7 @@ function hashToken(token: string): string {
 }
 
 function refreshExpiryDate(): Date {
-  const expiresInMs =
-    typeof env.JWT_REFRESH_EXPIRES_IN === 'string'
-      ? (ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue) as number)
-      : env.JWT_REFRESH_EXPIRES_IN;
-  return new Date(Date.now() + expiresInMs);
+  return new Date(Date.now() + ms(env.JWT_REFRESH_EXPIRES_IN));
 }
 
 export class AuthService {

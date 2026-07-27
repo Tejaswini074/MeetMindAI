@@ -22,8 +22,10 @@ export function parsePagination(
   allowedSortFields: string[] = [],
   defaultSortField = 'createdAt',
 ): ParsedPagination {
-  const page = Math.max(DEFAULT_PAGE, Number(query.page) || DEFAULT_PAGE);
-  const limit = Math.min(MAX_LIMIT, Math.max(1, Number(query.limit) || DEFAULT_LIMIT));
+  const rawPage = Number(query.page);
+  const rawLimit = Number(query.limit);
+  const page = Math.max(DEFAULT_PAGE, Number.isFinite(rawPage) ? rawPage : DEFAULT_PAGE);
+  const limit = Math.min(MAX_LIMIT, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : DEFAULT_LIMIT));
   const skip = (page - 1) * limit;
 
   let sortField = defaultSortField;

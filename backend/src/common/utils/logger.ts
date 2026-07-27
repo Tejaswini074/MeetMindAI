@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import winston from 'winston';
-import { env, isProd } from '@config/env';
+import { env, isProd, isTest } from '@config/env';
 
 const logsDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logsDir)) {
@@ -26,9 +26,9 @@ export const logger = winston.createLogger({
   level: env.LOG_LEVEL,
   format: isProd ? prodFormat : devFormat,
   transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: path.join(logsDir, 'error.log'), level: 'error' }),
-    new winston.transports.File({ filename: path.join(logsDir, 'combined.log') }),
+    new winston.transports.Console({ silent: isTest }),
+    new winston.transports.File({ filename: path.join(logsDir, 'error.log'), level: 'error', silent: isTest }),
+    new winston.transports.File({ filename: path.join(logsDir, 'combined.log'), silent: isTest }),
   ],
   exitOnError: false,
 });

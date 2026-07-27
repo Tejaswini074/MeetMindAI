@@ -33,14 +33,14 @@ const ATTACHMENT_MIME_TYPES = [
 
 function fileFilterFor(allowed: string[]) {
   return (
-    _req: unknown,
+    _req: Express.Request,
     file: Express.Multer.File,
-    cb: (error: Error | null, acceptFile: boolean) => void,
+    cb: multer.FileFilterCallback,
   ): void => {
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(AppError.badRequest(`Unsupported file type: ${file.mimetype}`), false);
+      cb(AppError.badRequest(`Unsupported file type: ${file.mimetype}`));
     }
   };
 }
