@@ -48,6 +48,9 @@ export function MeetingsListScreen({ navigation }: Props) {
           <View style={styles.headerRow}>
             <Text style={typography.h1}>Meetings</Text>
             <View style={styles.headerActions}>
+              <Pressable onPress={() => navigation.navigate('Search')} style={styles.askButton}>
+                <Text style={styles.askButtonText}>Search</Text>
+              </Pressable>
               <Pressable onPress={() => navigation.navigate('AskAssistant')} style={styles.askButton}>
                 <Text style={styles.askButtonText}>Ask AI</Text>
               </Pressable>

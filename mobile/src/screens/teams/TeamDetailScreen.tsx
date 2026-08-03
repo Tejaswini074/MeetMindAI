@@ -9,7 +9,7 @@ import type { TeamMember } from '../../types/api';
 
 type Props = NativeStackScreenProps<TeamsStackParamList, 'TeamDetail'>;
 
-export function TeamDetailScreen({ route }: Props) {
+export function TeamDetailScreen({ route, navigation }: Props) {
   const { teamId } = route.params;
   const { data: team, isLoading: teamLoading } = useGetTeamQuery(teamId);
   const { data: members, isLoading: membersLoading } = useListTeamMembersQuery(teamId);
@@ -52,6 +52,13 @@ export function TeamDetailScreen({ route }: Props) {
       {error && <Text style={styles.error}>Could not send invitation. Check the email and try again.</Text>}
       {isSuccess && <Text style={styles.success}>Invitation sent!</Text>}
       <Button title="Send invite" onPress={handleInvite} loading={inviting} disabled={!inviteEmail.trim()} />
+
+      <Button
+        title="View analytics"
+        variant="ghost"
+        onPress={() => navigation.navigate('AnalyticsDashboard', { teamId, teamName: team?.name })}
+        style={styles.analyticsButton}
+      />
     </ScreenContainer>
   );
 }
@@ -82,6 +89,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   memberInfo: { flex: 1, marginLeft: spacing.md },
+  analyticsButton: { marginTop: spacing.xl },
   error: { color: colors.danger, marginBottom: spacing.sm },
   success: { color: colors.success, marginBottom: spacing.sm },
 });

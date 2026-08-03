@@ -22,6 +22,7 @@ export type NotificationType =
   | 'MENTION'
   | 'SYSTEM';
 export type SentimentLabel = 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'MIXED';
+export type AiFeature = 'TRANSCRIPTION' | 'SUMMARY' | 'ACTION_ITEMS' | 'EMBEDDING' | 'QA' | 'SENTIMENT';
 
 export interface ApiEnvelope<T> {
   success: true;

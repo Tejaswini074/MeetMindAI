@@ -1,5 +1,5 @@
 import { colors } from '../theme';
-import { MeetingStatus, TaskPriority, TaskStatus } from '../types/api';
+import { AiFeature, MeetingStatus, TaskPriority, TaskStatus } from '../types/api';
 
 export const taskStatusLabels: Record<TaskStatus, string> = {
   TODO: 'To Do',
@@ -35,3 +35,12 @@ export function taskStatusColor(status: TaskStatus): string {
 export function meetingStatusColor(status: MeetingStatus): string {
   return colors.meetingStatus[status];
 }
+
+export const aiFeatureLabels: Record<AiFeature, string> = {
+  TRANSCRIPTION: 'Transcription',
+  SUMMARY: 'Summaries',
+  ACTION_ITEMS: 'Action items',
+  EMBEDDING: 'Search indexing',
+  QA: 'AI assistant Q&A',
+  SENTIMENT: 'Sentiment analysis',
+};

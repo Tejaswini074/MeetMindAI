@@ -6,6 +6,7 @@ export type AuthStackParamList = {
 export type TeamsStackParamList = {
   TeamsList: undefined;
   TeamDetail: { teamId: string };
+  AnalyticsDashboard: { teamId?: string; teamName?: string } | undefined;
 };
 
 export type MeetingsStackParamList = {
@@ -13,6 +14,7 @@ export type MeetingsStackParamList = {
   CreateMeeting: { teamId?: string } | undefined;
   MeetingDetail: { meetingId: string };
   AskAssistant: undefined;
+  Search: undefined;
 };
 
 export type TasksStackParamList = {

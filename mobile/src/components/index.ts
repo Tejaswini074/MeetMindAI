@@ -6,5 +6,6 @@ export { EmptyState } from './EmptyState';
 export { LoadingSpinner } from './LoadingSpinner';
 export { ScreenContainer } from './ScreenContainer';
 export { Avatar } from './Avatar';
+export { StatTile } from './StatTile';
 export { SelectModal } from './SelectModal';
 export type { SelectOption } from './SelectModal';

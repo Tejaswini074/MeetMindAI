@@ -27,9 +27,14 @@ export function TeamsListScreen({ navigation }: Props) {
         ListHeaderComponent={
           <View style={styles.headerRow}>
             <Text style={typography.h1}>Teams</Text>
-            <Pressable onPress={() => setJoinModalVisible(true)}>
-              <Text style={styles.joinLink}>Have an invite?</Text>
-            </Pressable>
+            <View style={styles.headerLinks}>
+              <Pressable onPress={() => navigation.navigate('AnalyticsDashboard', undefined)}>
+                <Text style={styles.joinLink}>Analytics</Text>
+              </Pressable>
+              <Pressable onPress={() => setJoinModalVisible(true)}>
+                <Text style={styles.joinLink}>Have an invite?</Text>
+              </Pressable>
+            </View>
           </View>
         }
         ListEmptyComponent={
@@ -149,6 +154,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
+  headerLinks: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   joinLink: { color: colors.primary, fontWeight: '600' },
   error: { color: colors.danger, marginBottom: spacing.sm },
   card: { marginBottom: spacing.md },

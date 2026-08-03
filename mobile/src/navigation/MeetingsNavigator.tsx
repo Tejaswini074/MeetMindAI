@@ -4,6 +4,7 @@ import { MeetingsListScreen } from '../screens/meetings/MeetingsListScreen';
 import { CreateMeetingScreen } from '../screens/meetings/CreateMeetingScreen';
 import { MeetingDetailScreen } from '../screens/meetings/MeetingDetailScreen';
 import { AskAssistantScreen } from '../screens/meetings/AskAssistantScreen';
+import { SearchScreen } from '../screens/meetings/SearchScreen';
 import { colors } from '../theme';
 import type { MeetingsStackParamList } from './types';
 
@@ -16,6 +17,7 @@ export function MeetingsNavigator() {
       <Stack.Screen name="CreateMeeting" component={CreateMeetingScreen} options={{ title: 'New meeting' }} />
       <Stack.Screen name="MeetingDetail" component={MeetingDetailScreen} options={{ title: 'Meeting' }} />
       <Stack.Screen name="AskAssistant" component={AskAssistantScreen} options={{ title: 'Ask AI', headerShown: false }} />
+      <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Search' }} />
     </Stack.Navigator>
   );
 }
